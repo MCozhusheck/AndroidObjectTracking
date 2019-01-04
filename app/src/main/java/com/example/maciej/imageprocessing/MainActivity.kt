@@ -103,12 +103,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         mRgba?.release();
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
-        mRgba = inputFrame?.rgba();
-        // Rotate mRgba 90 degrees
-//        Core.transpose(mRgba, mRgbaT);
-//        Imgproc.resize(mRgbaT, mRgbaF, mRgbaF?.size(), .0,.0, 0);
-//        Core.flip(mRgbaF, mRgba, 1 );
-
+        mRgba = inputFrame?.rgba()
         return mRgba; // This function must return
     }
 }
