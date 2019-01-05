@@ -21,6 +21,7 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc;
 
 class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
@@ -28,13 +29,15 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     companion object {
         const val TAG: String = "MainActivity"
         const val PERMISSION_REQUEST_CAMERA: Int = 1
+        const val REQUEST_IMAGE_CAPTURE = 2
     }
 
     private var mOpenCvCameraView: CameraBridgeViewBase? = null
     private val mIsJavaCamera = true
     var mRgba: Mat? = null
-    var mRgbaF: Mat? = null
-    var mRgbaT: Mat? = null
+    var previousFrame: Mat? = null
+    var diff: Mat? = null
+
     private val mLoaderCallback = object: BaseLoaderCallback(this) {
         override fun onManagerConnected(status: Int) {
             when (status) {
@@ -67,9 +70,9 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             Log.i(TAG, "permission granted")
         }
 
-        mOpenCvCameraView = findViewById(R.id.camera);
-        mOpenCvCameraView?.setVisibility(SurfaceView.VISIBLE);
-        mOpenCvCameraView?.setCvCameraViewListener(this);
+        mOpenCvCameraView = findViewById(R.id.camera)
+        mOpenCvCameraView?.setVisibility(SurfaceView.VISIBLE)
+        mOpenCvCameraView?.setCvCameraViewListener(this)
 
     }
 
@@ -96,14 +99,21 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     }
     override fun onCameraViewStarted(width: Int, height: Int) {
         mRgba = Mat(height, width, CvType.CV_8UC4)
-        mRgbaF = Mat(height, width, CvType.CV_8UC4)
-        mRgbaT = Mat(width, width, CvType.CV_8UC4)
+        previousFrame = Mat(height, width, CvType.CV_8UC4)
+        diff = Mat(height, width, CvType.CV_8UC4)
     }
     override fun onCameraViewStopped() {
-        mRgba?.release();
+        mRgba?.release()
+        previousFrame?.release()
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
         mRgba = inputFrame?.rgba()
-        return mRgba; // This function must return
+        if(previousFrame == null)
+            previousFrame = mRgba
+
+        Core.subtract(mRgba, previousFrame, diff)
+
+        previousFrame = mRgba
+        return diff
     }
 }
