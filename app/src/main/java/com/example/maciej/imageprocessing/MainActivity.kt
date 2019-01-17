@@ -5,24 +5,20 @@ import android.content.pm.PackageManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
-import android.support.v4.app.FragmentActivity
 import android.support.v4.content.ContextCompat
 import android.util.Log
 import android.view.SurfaceView
 import android.view.WindowManager
 
-import org.opencv.android.JavaCameraView;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.Size
-import org.opencv.imgproc.Imgproc;
+import org.opencv.video.BackgroundSubtractorMOG2
+import org.opencv.video.Video;
 
 class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -34,9 +30,9 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
     private var mOpenCvCameraView: CameraBridgeViewBase? = null
     private val mIsJavaCamera = true
-    var mRgba: Mat? = null
-    var previousFrame: Mat? = null
-    var diff: Mat? = null
+    var frame: Mat? = null
+    var fgMask: Mat? = null
+    var backSub: BackgroundSubtractorMOG2? = null
 
     private val mLoaderCallback = object: BaseLoaderCallback(this) {
         override fun onManagerConnected(status: Int) {
@@ -44,6 +40,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
                 LoaderCallbackInterface.SUCCESS -> {
                     Log.i(TAG, "OpenCV loaded successfully")
                     mOpenCvCameraView?.enableView()
+                    backSub = Video.createBackgroundSubtractorMOG2()
                 }
                 else -> {
                     super.onManagerConnected(status)
@@ -98,22 +95,17 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
     }
     override fun onCameraViewStarted(width: Int, height: Int) {
-        mRgba = Mat(height, width, CvType.CV_8UC4)
-        previousFrame = Mat(height, width, CvType.CV_8UC4)
-        diff = Mat(height, width, CvType.CV_8UC4)
+        frame = Mat(height, width, CvType.CV_8UC4)
+        fgMask = Mat(height, width, CvType.CV_8UC4)
     }
     override fun onCameraViewStopped() {
-        mRgba?.release()
-        previousFrame?.release()
+        frame?.release()
+        fgMask?.release()
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
-        mRgba = inputFrame?.rgba()
-        if(previousFrame == null)
-            previousFrame = mRgba
+        frame = inputFrame?.rgba()
+        backSub?.apply(frame, fgMask)
 
-        Core.subtract(mRgba, previousFrame, diff)
-
-        previousFrame = mRgba
-        return diff
+        return fgMask
     }
 }
