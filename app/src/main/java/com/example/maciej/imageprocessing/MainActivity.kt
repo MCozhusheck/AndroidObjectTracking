@@ -2,6 +2,7 @@ package com.example.maciej.imageprocessing
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.hardware.Camera
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
@@ -15,10 +16,15 @@ import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
+import org.opencv.core.*
+import org.opencv.imgproc.Imgproc
 import org.opencv.video.BackgroundSubtractorMOG2
 import org.opencv.video.Video;
+import org.opencv.core.Scalar
+
+
+
+
 
 class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -33,6 +39,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     var frame: Mat? = null
     var fgMask: Mat? = null
     var backSub: BackgroundSubtractorMOG2? = null
+    var mCamera: Camera? = null
 
     private val mLoaderCallback = object: BaseLoaderCallback(this) {
         override fun onManagerConnected(status: Int) {
@@ -64,6 +71,9 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
                 PERMISSION_REQUEST_CAMERA
             )
         } else {
+            val mCamera = getCameraInstance()
+            mCamera?.cancelAutoFocus()
+
             Log.i(TAG, "permission granted")
         }
 
@@ -71,6 +81,16 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         mOpenCvCameraView?.setVisibility(SurfaceView.VISIBLE)
         mOpenCvCameraView?.setCvCameraViewListener(this)
 
+    }
+
+    private fun getCameraInstance(): Camera? {
+        return try {
+            Camera.open() // attempt to get a Camera instance
+        } catch (e: Exception) {
+            Log.i(TAG, "failed to initialize camera")
+            // Camera is not available (in use or does not exist)
+            null // returns null if camera is unavailable
+        }
     }
 
     public override fun onPause() {
@@ -103,9 +123,42 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         fgMask?.release()
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
+        val minContourWidth = 35
+        val minContourHeight = 35
+        val threshold = 100.0
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+
         frame = inputFrame?.rgba()
         backSub?.apply(frame, fgMask)
+        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_CLOSE, kernel) // fill holes
+        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_OPEN, kernel) //remove noise
+        Imgproc.dilate(fgMask, fgMask, kernel)
 
-        return fgMask
+        val cannyOutput = Mat()
+        Imgproc.Canny(fgMask, cannyOutput, threshold, threshold * 2)
+        val contours = ArrayList<MatOfPoint>()
+        val hierarchy = Mat()
+        Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_TC89_L1)
+        hierarchy.release()
+
+        for(contour in contours) {
+//            val rectValid = Imgproc.boundingRect(contour)
+//            if(rectValid.width < minContourWidth || rectValid.height < minContourHeight)
+//                continue
+
+            val approxCurve = MatOfPoint2f()
+            val contour2f = MatOfPoint2f()
+            contour2f.convertTo(contour, CvType.CV_32FC2)
+            val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
+            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
+            val points = MatOfPoint()
+            points.convertTo(approxCurve, CvType.CV_32FC2)
+            val rect = Imgproc.boundingRect(points)
+
+            Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
+                Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), Scalar(255.0, 0.0, 0.0, 255.0), 3)
+        }
+
+        return frame
     }
 }
