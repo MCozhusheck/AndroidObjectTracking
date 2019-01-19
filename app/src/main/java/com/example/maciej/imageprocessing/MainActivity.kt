@@ -123,8 +123,6 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         fgMask?.release()
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
-        val minContourWidth = 35
-        val minContourHeight = 35
         val threshold = 100.0
         val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
 
@@ -140,19 +138,16 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         val hierarchy = Mat()
         Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_TC89_L1)
         hierarchy.release()
-
+        Log.i(TAG,"contours size: ${contours.size}")
         for(contour in contours) {
-//            val rectValid = Imgproc.boundingRect(contour)
-//            if(rectValid.width < minContourWidth || rectValid.height < minContourHeight)
-//                continue
 
             val approxCurve = MatOfPoint2f()
             val contour2f = MatOfPoint2f()
-            contour2f.convertTo(contour, CvType.CV_32FC2)
+            contour.convertTo(contour2f, CvType.CV_32FC2)
             val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
             Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
             val points = MatOfPoint()
-            points.convertTo(approxCurve, CvType.CV_32FC2)
+            approxCurve.convertTo(points, CvType.CV_32SC2)
             val rect = Imgproc.boundingRect(points)
 
             Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
