@@ -140,20 +140,23 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         val hierarchy = Mat()
         Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_TC89_L1)
         hierarchy.release()
+        Log.i(TAG, "contours size: " + contours.size)
 
         for(contour in contours) {
-//            val rectValid = Imgproc.boundingRect(contour)
-//            if(rectValid.width < minContourWidth || rectValid.height < minContourHeight)
-//                continue
+
+
 
             val approxCurve = MatOfPoint2f()
             val contour2f = MatOfPoint2f()
-            contour2f.convertTo(contour, CvType.CV_32FC2)
+            contour.convertTo(contour2f, CvType.CV_32FC2)
             val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
             Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
             val points = MatOfPoint()
-            points.convertTo(approxCurve, CvType.CV_32FC2)
+            approxCurve.convertTo(points, CvType.CV_32SC2)
             val rect = Imgproc.boundingRect(points)
+            if(rect.width < minContourWidth || rect.height < minContourHeight)
+                continue
+            Log.i(TAG, "Rectangle x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}")
 
             Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
                 Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), Scalar(255.0, 0.0, 0.0, 255.0), 3)
