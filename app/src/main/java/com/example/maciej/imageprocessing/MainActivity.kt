@@ -140,11 +140,9 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         val hierarchy = Mat()
         Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_TC89_L1)
         hierarchy.release()
-        Log.i(TAG, "contours size: " + contours.size)
+        Log.i(TAG,"contours size: ${contours.size}")
 
         for(contour in contours) {
-
-
 
             val approxCurve = MatOfPoint2f()
             val contour2f = MatOfPoint2f()
