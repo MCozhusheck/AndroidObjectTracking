@@ -126,13 +126,13 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         val minContourWidth = 35
         val minContourHeight = 35
         val threshold = 100.0
-        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+        val kernelClose = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+        val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(10.0, 10.0))
 
         frame = inputFrame?.rgba()
         backSub?.apply(frame, fgMask)
-        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_CLOSE, kernel) // fill holes
-        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_OPEN, kernel) //remove noise
-        Imgproc.dilate(fgMask, fgMask, kernel)
+        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_CLOSE, kernelClose) // fill holes
+        Imgproc.erode(fgMask, fgMask, kernelErode)
 
         val cannyOutput = Mat()
         Imgproc.Canny(fgMask, cannyOutput, threshold, threshold * 2)
