@@ -9,11 +9,13 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.util.Log
 import android.view.SurfaceView
+import android.view.View
 import android.view.WindowManager
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
+import org.opencv.android.CameraBridgeViewBase.IMPORTANT_FOR_ACCESSIBILITY_AUTO
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.*
@@ -55,8 +57,6 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             }
         }
     }
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -82,7 +82,6 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         mOpenCvCameraView?.setCvCameraViewListener(this)
 
     }
-
     private fun getCameraInstance(): Camera? {
         return try {
             Camera.open() // attempt to get a Camera instance
@@ -123,43 +122,55 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         fgMask?.release()
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
-        val minContourWidth = 35
-        val minContourHeight = 35
-        val threshold = 100.0
-        val kernelClose = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
-        val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(10.0, 10.0))
-
         frame = inputFrame?.rgba()
         backSub?.apply(frame, fgMask)
-        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_CLOSE, kernelClose) // fill holes
-        Imgproc.erode(fgMask, fgMask, kernelErode)
+        fgMask = filterFgMask(fgMask)
 
-        val cannyOutput = Mat()
-        Imgproc.Canny(fgMask, cannyOutput, threshold, threshold * 2)
-        val contours = ArrayList<MatOfPoint>()
-        val hierarchy = Mat()
-        Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_TC89_L1)
-        hierarchy.release()
-        Log.i(TAG,"contours size: ${contours.size}")
+        val contours = getContours(fgMask)
 
         for(contour in contours) {
-
-            val approxCurve = MatOfPoint2f()
-            val contour2f = MatOfPoint2f()
-            contour.convertTo(contour2f, CvType.CV_32FC2)
-            val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
-            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
-            val points = MatOfPoint()
-            approxCurve.convertTo(points, CvType.CV_32SC2)
-            val rect = Imgproc.boundingRect(points)
-            if(rect.width < minContourWidth || rect.height < minContourHeight)
-                continue
-            Log.i(TAG, "Rectangle x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}")
+            val rect = getRectangleFromContour(contour)
 
             Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
                 Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), Scalar(255.0, 0.0, 0.0, 255.0), 3)
         }
 
         return frame
+    }
+    private fun filterFgMask(fgMask: Mat?) : Mat? {
+        val kernelClose = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+        val kernelOpen = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
+        val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
+        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_CLOSE, kernelClose) // fill holes
+        //Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_OPEN, kernelOpen)
+        Imgproc.erode(fgMask, fgMask, kernelErode)
+        return fgMask
+    }
+    private fun getContours(fgMask: Mat?): ArrayList<MatOfPoint> {
+        val contours = ArrayList<MatOfPoint>()
+        val threshold = 100.0
+        val cannyOutput = Mat()
+        Imgproc.Canny(fgMask, cannyOutput, threshold, threshold * 2)
+        val hierarchy = Mat()
+        Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_TC89_L1)
+        hierarchy.release()
+        return contours
+    }
+    private fun getRectangleFromContour(contour: MatOfPoint): Rect {
+        val minContourWidth = 35
+        val minContourHeight = 35
+
+        val approxCurve = MatOfPoint2f()
+        val contour2f = MatOfPoint2f()
+        contour.convertTo(contour2f, CvType.CV_32FC2)
+        val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
+        Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
+        val points = MatOfPoint()
+        approxCurve.convertTo(points, CvType.CV_32SC2)
+        val rect = Imgproc.boundingRect(points)
+        if(rect.width < minContourWidth || rect.height < minContourHeight)
+            return Rect(0,0,0,0)
+
+        return rect
     }
 }
