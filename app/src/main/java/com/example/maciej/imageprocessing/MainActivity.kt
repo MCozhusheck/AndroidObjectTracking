@@ -161,6 +161,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
             val points = MatOfPoint()
             approxCurve.convertTo(points, CvType.CV_32SC2)
+            //val rect = FrameRect(points)
             val rect = Imgproc.boundingRect(points)
             if(rect.width < minContourWidth || rect.height < minContourHeight)
                 continue
