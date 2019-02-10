@@ -91,7 +91,6 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             null // returns null if camera is unavailable
         }
     }
-
     public override fun onPause() {
         super.onPause()
         if (mOpenCvCameraView != null)
@@ -127,23 +126,16 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         fgMask = filterFgMask(fgMask)
 
         val contours = getContours(fgMask)
-
-        for(contour in contours) {
-            val rect = getRectangleFromContour(contour)
-
-            Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
-                Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), Scalar(255.0, 0.0, 0.0, 255.0), 3)
-        }
+        val rectangles = getRectanglesFromContours(contours)
+        displayRectangles(frame, rectangles)
 
         return frame
     }
     private fun filterFgMask(fgMask: Mat?) : Mat? {
-        val kernelClose = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
-        val kernelOpen = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
-        val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
-        Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_CLOSE, kernelClose) // fill holes
-        //Imgproc.morphologyEx(fgMask, fgMask, Imgproc.MORPH_OPEN, kernelOpen)
+        val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(2.0, 2.0))
+        val kernelDilate = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
         Imgproc.erode(fgMask, fgMask, kernelErode)
+        Imgproc.dilate(fgMask, fgMask, kernelDilate)
         return fgMask
     }
     private fun getContours(fgMask: Mat?): ArrayList<MatOfPoint> {
@@ -156,21 +148,32 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         hierarchy.release()
         return contours
     }
-    private fun getRectangleFromContour(contour: MatOfPoint): Rect {
+    private fun getRectanglesFromContours(contours: ArrayList<MatOfPoint>): ArrayList<Rect> {
         val minContourWidth = 35
         val minContourHeight = 35
+        val rectangles: ArrayList<Rect> = ArrayList()
 
         val approxCurve = MatOfPoint2f()
         val contour2f = MatOfPoint2f()
-        contour.convertTo(contour2f, CvType.CV_32FC2)
-        val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
-        Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
-        val points = MatOfPoint()
-        approxCurve.convertTo(points, CvType.CV_32SC2)
-        val rect = Imgproc.boundingRect(points)
-        if(rect.width < minContourWidth || rect.height < minContourHeight)
-            return Rect(0,0,0,0)
+        for (contour in contours) {
+            contour.convertTo(contour2f, CvType.CV_32FC2)
+            val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
+            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
+            val points = MatOfPoint()
+            approxCurve.convertTo(points, CvType.CV_32SC2)
+            val rect = Imgproc.boundingRect(points)
+            if(rect.width < minContourWidth || rect.height < minContourHeight)
+                continue
+            rectangles.add(rect)
+        }
 
-        return rect
+        return  rectangles
+    }
+    private fun displayRectangles(frame: Mat? ,rectangles: ArrayList<Rect>): Mat? {
+        for (rect in rectangles) {
+            Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
+                Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), Scalar(255.0, 0.0, 0.0, 255.0), 3)
+        }
+        return frame
     }
 }
