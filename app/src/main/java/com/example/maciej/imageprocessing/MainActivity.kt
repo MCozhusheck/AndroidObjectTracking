@@ -148,10 +148,10 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         hierarchy.release()
         return contours
     }
-    private fun getRectanglesFromContours(contours: ArrayList<MatOfPoint>): ArrayList<Rect> {
+    private fun getRectanglesFromContours(contours: ArrayList<MatOfPoint>): ArrayList<FrameRect> {
         val minContourWidth = 35
         val minContourHeight = 35
-        val rectangles: ArrayList<Rect> = ArrayList()
+        val rectangles: ArrayList<FrameRect> = ArrayList()
 
         val approxCurve = MatOfPoint2f()
         val contour2f = MatOfPoint2f()
@@ -161,8 +161,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
             val points = MatOfPoint()
             approxCurve.convertTo(points, CvType.CV_32SC2)
-            //val rect = FrameRect(points)
-            val rect = Imgproc.boundingRect(points)
+            val rect = FrameRect(points)
             if(rect.width < minContourWidth || rect.height < minContourHeight)
                 continue
             rectangles.add(rect)
@@ -170,7 +169,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         return  rectangles
     }
-    private fun displayRectangles(frame: Mat? ,rectangles: ArrayList<Rect>): Mat? {
+    private fun displayRectangles(frame: Mat? ,rectangles: ArrayList<FrameRect>): Mat? {
         for (rect in rectangles) {
             Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
                 Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), Scalar(255.0, 0.0, 0.0, 255.0), 3)
