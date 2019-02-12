@@ -9,23 +9,19 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.util.Log
 import android.view.SurfaceView
-import android.view.View
 import android.view.WindowManager
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.android.CameraBridgeViewBase.IMPORTANT_FOR_ACCESSIBILITY_AUTO
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
 import org.opencv.video.BackgroundSubtractorMOG2
 import org.opencv.video.Video;
-import org.opencv.core.Scalar
-
-
-
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 
 class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
@@ -42,6 +38,8 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     var fgMask: Mat? = null
     var backSub: BackgroundSubtractorMOG2? = null
     var mCamera: Camera? = null
+    val factory: FrameRectFactory = FrameRectFactory()
+    var previousRectangles = ArrayList<FrameRect>()
 
     private val mLoaderCallback = object: BaseLoaderCallback(this) {
         override fun onManagerConnected(status: Int) {
@@ -121,18 +119,21 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         fgMask?.release()
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
+
         frame = inputFrame?.rgba()
         backSub?.apply(frame, fgMask)
-        fgMask = filterFgMask(fgMask)
+        filterFgMask(fgMask)
 
         val contours = getContours(fgMask)
-        val rectangles = getRectanglesFromContours(contours)
+        val rectangles = factory.createRectFrameArrayList(contours)
         displayRectangles(frame, rectangles)
+        updateRectangles(rectangles, previousRectangles)
+        previousRectangles = rectangles
 
         return frame
     }
     private fun filterFgMask(fgMask: Mat?) : Mat? {
-        val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(2.0, 2.0))
+        val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
         val kernelDilate = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
         Imgproc.erode(fgMask, fgMask, kernelErode)
         Imgproc.dilate(fgMask, fgMask, kernelDilate)
@@ -148,32 +149,43 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         hierarchy.release()
         return contours
     }
-    private fun getRectanglesFromContours(contours: ArrayList<MatOfPoint>): ArrayList<FrameRect> {
-        val minContourWidth = 35
-        val minContourHeight = 35
-        val rectangles: ArrayList<FrameRect> = ArrayList()
-
-        val approxCurve = MatOfPoint2f()
-        val contour2f = MatOfPoint2f()
-        for (contour in contours) {
-            contour.convertTo(contour2f, CvType.CV_32FC2)
-            val approxDistance = Imgproc.arcLength(contour2f, true) * 0.02
-            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true)
-            val points = MatOfPoint()
-            approxCurve.convertTo(points, CvType.CV_32SC2)
-            val rect = FrameRect(points)
-            if(rect.width < minContourWidth || rect.height < minContourHeight)
-                continue
-            rectangles.add(rect)
-        }
-
-        return  rectangles
-    }
     private fun displayRectangles(frame: Mat? ,rectangles: ArrayList<FrameRect>): Mat? {
         for (rect in rectangles) {
             Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
-                Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), Scalar(255.0, 0.0, 0.0, 255.0), 3)
+                Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), rect.color, rect.thickness)
         }
         return frame
+    }
+    private fun updateRectangles(rectangles: ArrayList<FrameRect>, previousRectangles: ArrayList<FrameRect>): ArrayList<FrameRect> {
+
+        val maxDistance = 50.0
+        if (previousRectangles.size < 1 || rectangles.size < 1)
+            return rectangles
+
+        val everyDistance: ArrayList<Double> = ArrayList(rectangles.size)
+        val everyDistanceIndices: ArrayList<Int> = ArrayList(rectangles.size)
+
+        for (i in 0 until rectangles.size) {
+            val localDistance: ArrayList<Double> = ArrayList(previousRectangles.size)
+            for (j in 0 until previousRectangles.size) {
+                val previous = previousRectangles[j]
+                val next = rectangles[i]
+                val distance = sqrt((previous.x-next.x).toDouble().pow(2)+(previous.y - next.y).toDouble().pow(2))
+                localDistance.add(distance)
+            }
+            var index = 0
+            var minDistance = localDistance.min() ?: Double.MAX_VALUE
+            if(minDistance > maxDistance)
+                minDistance = Double.MAX_VALUE
+
+            if (minDistance != Double.MAX_VALUE)
+                index = localDistance.indexOf(minDistance)
+
+            everyDistanceIndices.add(index)
+            everyDistance.add(minDistance)
+        }
+        if (everyDistance.size != everyDistanceIndices.size)
+            Log.i(TAG, "different arrays sizes!")
+        return  rectangles
     }
 }
