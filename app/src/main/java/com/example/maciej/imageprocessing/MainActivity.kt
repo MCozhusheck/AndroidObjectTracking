@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     var mCamera: Camera? = null
     val factory: FrameRectFactory = FrameRectFactory()
     var previousRectangles = ArrayList<FrameRect>()
+    var rectangles = ArrayList<FrameRect>()
 
     private val mLoaderCallback = object: BaseLoaderCallback(this) {
         override fun onManagerConnected(status: Int) {
@@ -128,7 +129,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         filterFgMask(fgMask)
 
         val contours = getContours(fgMask)
-        val rectangles = factory.createRectFrameArrayList(contours)
+        rectangles = factory.createRectFrameArrayList(contours)
         updateRectangles(rectangles, previousRectangles)
         displayRectangles(frame, rectangles)
         previousRectangles = rectangles
@@ -150,6 +151,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         if (x < 0 || y < 0 || x > cols || y > rows)
             return false
+        ScreenTouchedCommand(rectangles, x, y).execute()
 
         return false
     }
