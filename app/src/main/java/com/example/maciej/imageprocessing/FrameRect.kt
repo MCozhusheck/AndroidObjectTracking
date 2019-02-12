@@ -1,5 +1,6 @@
 package com.example.maciej.imageprocessing
 
+import android.util.Log
 import org.opencv.core.MatOfPoint
 import org.opencv.core.Rect
 import org.opencv.core.Scalar
@@ -13,8 +14,8 @@ class FrameRect (val X:Int, val Y:Int, val szer: Int, val wys: Int): Rect(X,Y,sz
                                           Imgproc.boundingRect(points).width, Imgproc.boundingRect(points).width)
 
     override fun copy(frame: Frame) {
-        thickness = frame.thickness
-        color = frame.color
-        isSelected = frame.isSelected
+        this.thickness = frame.thickness
+        this.color = frame.color
+        this.isSelected = frame.isSelected
     }
 }

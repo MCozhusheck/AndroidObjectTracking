@@ -126,8 +126,8 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         val contours = getContours(fgMask)
         val rectangles = factory.createRectFrameArrayList(contours)
-        displayRectangles(frame, rectangles)
         updateRectangles(rectangles, previousRectangles)
+        displayRectangles(frame, rectangles)
         previousRectangles = rectangles
 
         return frame
@@ -158,7 +158,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     }
     private fun updateRectangles(rectangles: ArrayList<FrameRect>, previousRectangles: ArrayList<FrameRect>): ArrayList<FrameRect> {
 
-        val maxDistance = 50.0
+        val maxDistance = 150.0
         if (previousRectangles.size < 1 || rectangles.size < 1)
             return rectangles
 
@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
                 val distance = sqrt((previous.x-next.x).toDouble().pow(2)+(previous.y - next.y).toDouble().pow(2))
                 localDistance.add(distance)
             }
-            var index = 0
+            var index = -1
             var minDistance = localDistance.min() ?: Double.MAX_VALUE
             if(minDistance > maxDistance)
                 minDistance = Double.MAX_VALUE
@@ -184,8 +184,18 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             everyDistanceIndices.add(index)
             everyDistance.add(minDistance)
         }
-        if (everyDistance.size != everyDistanceIndices.size)
-            Log.i(TAG, "different arrays sizes!")
+
+        for (i in 0 until rectangles.size) {
+            if (everyDistance[i].isFinite() && everyDistanceIndices[i] > 0) {
+                val index = everyDistanceIndices[i]
+                rectangles[i].copy(previousRectangles[index])
+                for (j in 0 until everyDistanceIndices.size) {
+                    if (everyDistanceIndices[j] == index)
+                        everyDistanceIndices[j] = -1
+                }
+            }
+        }
+
         return  rectangles
     }
 }
