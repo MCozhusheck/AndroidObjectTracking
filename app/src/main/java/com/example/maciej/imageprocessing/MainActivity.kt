@@ -8,7 +8,9 @@ import android.os.Bundle
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.util.Log
+import android.view.MotionEvent
 import android.view.SurfaceView
+import android.view.View
 import android.view.WindowManager
 
 import org.opencv.android.BaseLoaderCallback;
@@ -24,7 +26,7 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 
-class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
+class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2, View.OnTouchListener {
 
     companion object {
         const val TAG: String = "MainActivity"
@@ -48,6 +50,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
                     Log.i(TAG, "OpenCV loaded successfully")
                     mOpenCvCameraView?.enableView()
                     backSub = Video.createBackgroundSubtractorMOG2()
+                    mOpenCvCameraView?.setOnTouchListener(this@MainActivity)
                 }
                 else -> {
                     super.onManagerConnected(status)
@@ -132,6 +135,24 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         return frame
     }
+
+    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+        val cols = frame!!.cols()
+        val rows = frame!!.rows()
+
+        val xOffset = (mOpenCvCameraView!!.width - cols) / 2
+        val yOffset = (mOpenCvCameraView!!.height - rows) / 2
+
+        val x = event!!.x - xOffset
+        val y = event!!.y - yOffset
+
+        Log.i(TAG, "Touch image coordinates: ($x, $y)")
+
+        if (x < 0 || y < 0 || x > cols || y > rows)
+            return false
+
+        return false
+    }
     private fun filterFgMask(fgMask: Mat?) : Mat? {
         val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
         val kernelDilate = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
@@ -151,8 +172,9 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     }
     private fun displayRectangles(frame: Mat? ,rectangles: ArrayList<FrameRect>): Mat? {
         for (rect in rectangles) {
-            Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
-                Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), rect.color, rect.thickness)
+            if (!rect.isSelected)
+                Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
+                    Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), rect.color, rect.thickness)
         }
         return frame
     }
