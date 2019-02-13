@@ -3,13 +3,15 @@ package com.example.maciej.imageprocessing
 import org.opencv.core.Mat
 
 class ScreenTouchedCommand(private val rectangles: ArrayList<FrameRect>, private val x: Float, private val y: Float): Command {
-    override fun execute() {
+    override fun execute(): FrameRect? {
         for (rect in rectangles){
             if (withinXAxis(rect,x) && withinYAxis(rect, y)){
                 rect.color = Frame.GREEN
-                break
+                rect.isSelected = true
+                return rect
             }
         }
+        return null
     }
     private fun withinXAxis(rect: FrameRect, x: Float): Boolean {
         val maxX = (rect.x + rect.width).toFloat()

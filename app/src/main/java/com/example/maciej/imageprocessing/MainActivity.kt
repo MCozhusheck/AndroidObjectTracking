@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     val factory: FrameRectFactory = FrameRectFactory()
     var previousRectangles = ArrayList<FrameRect>()
     var rectangles = ArrayList<FrameRect>()
+    val eventManager = EventManager()
 
     private val mLoaderCallback = object: BaseLoaderCallback(this) {
         override fun onManagerConnected(status: Int) {
@@ -124,6 +125,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     }
     override fun onCameraFrame(inputFrame: CvCameraViewFrame?): Mat? {
 
+        eventManager.add(rectangles)
         frame = inputFrame?.rgba()
         backSub?.apply(frame, fgMask)
         filterFgMask(fgMask)
@@ -151,13 +153,13 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         if (x < 0 || y < 0 || x > cols || y > rows)
             return false
-        ScreenTouchedCommand(rectangles, x, y).execute()
-
+        val command = ScreenTouchedCommand(rectangles, x, y)
+        eventManager.update(command)
         return false
     }
     private fun filterFgMask(fgMask: Mat?) : Mat? {
         val kernelErode = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
-        val kernelDilate = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(8.0, 8.0))
+        val kernelDilate = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(15.0, 15.0))
         Imgproc.erode(fgMask, fgMask, kernelErode)
         Imgproc.dilate(fgMask, fgMask, kernelDilate)
         return fgMask
@@ -174,7 +176,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     }
     private fun displayRectangles(frame: Mat? ,rectangles: ArrayList<FrameRect>): Mat? {
         for (rect in rectangles) {
-            if (!rect.isSelected)
+            if (rect.isVisible)
                 Imgproc.rectangle(frame, Point(rect.x.toDouble(), rect.y.toDouble()),
                     Point((rect.x + rect.width).toDouble(), (rect.y + rect.height).toDouble()), rect.color, rect.thickness)
         }

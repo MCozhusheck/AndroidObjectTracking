@@ -11,5 +11,6 @@ interface Frame {
     var thickness: Int
     var color: Scalar
     var isSelected: Boolean
+    var isVisible: Boolean
     fun copy(frame: Frame)
 }

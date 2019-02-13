@@ -6,10 +6,11 @@ import org.opencv.core.Rect
 import org.opencv.core.Scalar
 import org.opencv.imgproc.Imgproc
 
-class FrameRect (val X:Int, val Y:Int, val szer: Int, val wys: Int): Rect(X,Y,szer,wys), Frame {
+class FrameRect (val X:Int, val Y:Int, val szer: Int, val wys: Int): Rect(X,Y,szer,wys), Frame, EventListener {
     override var thickness = 3
     override var color = Frame.RED
     override var isSelected = false
+    override var isVisible = true
     constructor(points: MatOfPoint) : this(Imgproc.boundingRect(points).x, Imgproc.boundingRect(points).y,
                                           Imgproc.boundingRect(points).width, Imgproc.boundingRect(points).width)
 
@@ -17,5 +18,10 @@ class FrameRect (val X:Int, val Y:Int, val szer: Int, val wys: Int): Rect(X,Y,sz
         this.thickness = frame.thickness
         this.color = frame.color
         this.isSelected = frame.isSelected
+        this.isVisible = frame.isVisible
+    }
+
+    override fun update() {
+        isVisible = false
     }
 }
