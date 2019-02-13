@@ -19,7 +19,7 @@ class EventManager {
         frameSelected.isSelected = true
         for (sub in subscribers){
             if (sub != frameSelected)
-                sub.isVisible = false
+                sub.update()
         }
     }
 }
