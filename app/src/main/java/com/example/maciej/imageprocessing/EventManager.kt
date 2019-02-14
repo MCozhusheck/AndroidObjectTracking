@@ -18,8 +18,7 @@ class EventManager {
         frameSelected ?: return
         frameSelected.isSelected = true
         for (sub in subscribers){
-            if (sub != frameSelected)
-                sub.update()
+            sub.update()
         }
     }
 }

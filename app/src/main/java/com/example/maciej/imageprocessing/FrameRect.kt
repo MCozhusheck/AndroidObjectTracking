@@ -22,6 +22,10 @@ class FrameRect (val X:Int, val Y:Int, val szer: Int, val wys: Int): Rect(X,Y,sz
     }
 
     override fun update() {
-        isVisible = false
+        if (isSelected){
+            isVisible = true
+        } else {
+            isVisible = false
+        }
     }
 }
